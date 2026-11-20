@@ -1,10 +1,10 @@
 """流式补数 时间线服务：生成作业时间序列和示例数据。"""
 from __future__ import annotations
 
-from datetime import date, timedelta
 from typing import Any
 
 from app.store import store
+from app.services.common import build_timeline
 
 MODULE = "backfill_stream"
 REQUIRED_FIELDS = ["任务编号", "目标表名", "起始偏移"]
@@ -15,21 +15,7 @@ NEGATIVE_ACTIONS = []
 
 class BackfillStreamService:
     def get_timeline(self) -> list[dict[str, Any]]:
-        rows = store.rows(MODULE)
-        today = date.today()
-        items: list[dict] = []
-        for i, row in enumerate(rows):
-            start = (today - timedelta(days=7 - i * 2)).isoformat()
-            end = (today + timedelta(days=3 - i)).isoformat()
-            items.append({
-                "id": int(row.get("id", i + 1)),
-                "name": str(row.get(list(row.keys())[1] if len(row) > 1 else "name", "")),
-                "start": start,
-                "end": end,
-                "status": str(row.get("status", STATUS_ORDER[i % len(STATUS_ORDER)])),
-                "logs": f"[{start}] 作业启动\n[{start}] 正在处理...\n[{end}] 任务{'完成' if row.get('status') == STATUS_ORDER[-1] else '进行中'}",
-            })
-        return items
+        return build_timeline(store.rows(MODULE), STATUS_ORDER)
 
     def get_entry(self, entry_id: int) -> dict[str, Any] | None:
         return store.find(MODULE, entry_id)

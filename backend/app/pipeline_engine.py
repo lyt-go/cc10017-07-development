@@ -453,6 +453,49 @@ class PipelineEngine:
         return {"ok": True, "result": result}
 
     # ───────────────────────────────
+    # 任务状态迁移链
+    # ───────────────────────────────
+
+    def migration_chain_status(self, job_id: int) -> dict[str, Any]:
+        """查询任务状态迁移链：流式计算 → 迁移数据计划 → Schema演进。
+
+        迁移数据计划是跨模块交接对象：流式计算页生成计划，Schema演进页读取计划
+        核对检查点字段版本。这里只读取已生成的计划，不隐式生成新的恢复点。
+        """
+        job = store.find("flink_job", job_id)
+        if job is None:
+            return {"exists": False, "message": f"流式任务 {job_id} 不存在或已归档"}
+
+        checkpoint = None
+        for row in store.rows("flink_checkpoints"):
+            if int(row.get("job_id", 0) or 0) == job_id:
+                if checkpoint is None or int(row.get("checkpoint_version", 0) or 0) > int(
+                    checkpoint.get("checkpoint_version", 0) or 0
+                ):
+                    checkpoint = row
+
+        plan = None
+        for row in store.rows("task_migration_plans"):
+            if int(row.get("job_id", 0) or 0) == job_id:
+                plan = row
+                break
+
+        schema_rows = [
+            row for row in store.rows("schema_evolve")
+            if row.get("关联主题") == job.get("消费主题")
+        ]
+        schema = schema_rows[-1] if schema_rows else None
+
+        return {
+            "exists": True,
+            "job": {"status": job.get("status"), "entry": job},
+            "checkpoint": {"exists": checkpoint is not None, "entry": checkpoint},
+            "migration_plan": {"exists": plan is not None, "entry": plan},
+            "schema_evolve": {"exists": schema is not None, "entry": schema},
+            "chain_ready": checkpoint is not None and plan is not None,
+        }
+
+    # ───────────────────────────────
     # 链路血缘与依赖图
     # ───────────────────────────────
 

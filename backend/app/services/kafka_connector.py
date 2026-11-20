@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.store import store
+from app.services.common import filter_page
 
 MODULE = "kafka_connector"
 LIST_FIELDS = ["配置编号", "集群地址", "消费组名", "偏移策略", "反序列化器", "批量大小", "超时时间", "死信队列"]
@@ -23,16 +24,15 @@ class KafkaConnectorService:
         page: int = 1,
         size: int = 20,
     ) -> tuple[list[dict[str, Any]], int]:
-        rows = store.rows(MODULE)
-        for field, expected in (filters or {}).items():
-            rows = [row for row in rows if expected.casefold() in str(row.get(field, "")).casefold()]
-        if keyword:
-            rows = [row for row in rows if keyword.casefold() in str(row.get("配置编号", "")).casefold()]
-        if status:
-            rows = [row for row in rows if row.get("status") == status]
-        total = len(rows)
-        start = (page - 1) * size
-        return rows[start:start + size], total
+        return filter_page(
+            store.rows(MODULE),
+            code_field="配置编号",
+            filters=filters,
+            keyword=keyword,
+            status=status,
+            page=page,
+            size=size,
+        )
 
     def get_entry(self, entry_id: int) -> dict[str, Any] | None:
         return store.find(MODULE, entry_id)

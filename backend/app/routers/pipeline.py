@@ -107,6 +107,12 @@ def compute_metrics(metric_id: int) -> ActionResult:
     return ActionResult(ok=True, message="实时指标计算完成", entry=result)
 
 
+@router.get("/migration/{job_id}")
+def get_migration_chain(job_id: int) -> dict:
+    """查询任务状态迁移链：流式计算→迁移数据计划→Schema演进。"""
+    return pipeline_engine.migration_chain_status(job_id)
+
+
 @router.get("/lineage-graph")
 def get_full_lineage_graph() -> dict:
     """获取全平台数据血缘图。"""

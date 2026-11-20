@@ -9,10 +9,12 @@ from fastapi.responses import StreamingResponse
 
 from app.schemas import ActionPayload, ActionResult, EntryPayload, PageResult
 from app.services.schema_evolve import SchemaEvolveService
+from app.services.task_migration_plan import TaskMigrationPlanService
 
 router = APIRouter(prefix="/api/schema_evolve", tags=["Schema演进"])
 
 service = SchemaEvolveService()
+migration_service = TaskMigrationPlanService()
 
 LIST_FIELDS = ["规则编号", "关联主题", "新增字段", "删除字段", "类型变更", "默认值填充", "兼容模式", "生效版本"]
 STATUSES = ["草稿", "待校验", "已生效", "已回滚"]
@@ -63,6 +65,18 @@ def export_entries(
     return StreamingResponse(
         iter([output.getvalue()]), media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": 'attachment; filename="schema_evolve.csv"'})
+
+
+@router.get("/migration-checks", response_model=list[dict])
+def list_migration_checks() -> list[dict]:
+    """Schema演进页核对任务状态迁移数据计划里的检查点字段版本。"""
+    checks = []
+    for plan in migration_service.list_plans():
+        result = migration_service.check_schema_compatibility(int(plan.get("id", 0)))
+        if result is not None:
+            result["plan_status"] = plan.get("status")
+            checks.append(result)
+    return checks
 
 
 @router.get("/{entry_id}", response_model=dict)

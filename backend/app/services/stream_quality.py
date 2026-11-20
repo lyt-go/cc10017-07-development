@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Any
 
 from app.store import store
+from app.services.common import filter_page
 
 MODULE = "stream_quality"
 LIST_FIELDS = ["规则编号", "监控主题", "校验类型", "告警阈值", "采样比例", "检测窗口", "阻断动作", "规则版本"]
@@ -27,16 +28,15 @@ class StreamQualityService:
         page: int = 1,
         size: int = 20,
     ) -> tuple[list[dict[str, Any]], int]:
-        rows = store.rows(MODULE)
-        for field, expected in (filters or {}).items():
-            rows = [row for row in rows if expected.casefold() in str(row.get(field, "")).casefold()]
-        if keyword:
-            rows = [row for row in rows if keyword.casefold() in str(row.get("规则编号", "")).casefold()]
-        if status:
-            rows = [row for row in rows if row.get("status") == status]
-        total = len(rows)
-        start = (page - 1) * size
-        return rows[start:start + size], total
+        return filter_page(
+            store.rows(MODULE),
+            code_field="规则编号",
+            filters=filters,
+            keyword=keyword,
+            status=status,
+            page=page,
+            size=size,
+        )
 
     def get_entry(self, entry_id: int) -> dict[str, Any] | None:
         return store.find(MODULE, entry_id)

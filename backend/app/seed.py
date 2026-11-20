@@ -256,4 +256,27 @@ SEED_ROWS: dict[str, list[dict[str, Any]]] = {
          "聚合函数": "sum", "过滤条件": "status='success'", "分组维度": "channel",
          "输出表名": "metric_pay_rate", "指标版本": "v1"},
     ],
+    # 流式计算任务的检查点：检查点版本必须与输出表版本一起记录在迁移计划里。
+    # 订单聚合任务 FLIN-0001 的检查点写在 v2 输出表结构上，输出表已切到 v3，
+    # v2 仍在恢复窗口内，因此生成迁移计划时会命中检查点/输出表版本冲突。
+    "flink_checkpoints": [
+        {"id": 1, "job_id": 1, "checkpoint_version": "3",
+         "checkpoint_path": "s3://flink/checkpoints/FLIN-0001/chk-3",
+         "checkpoint_offset": "1048576", "task_schema_version": "v3",
+         "output_table_version": "v2", "current_output_table_version": "v3",
+         "output_table_history": ["v3", "v2"], "batch_total": 6, "batch_completed": 4,
+         "created_at": "2026-11-16T10:00:00"},
+        {"id": 2, "job_id": 2, "checkpoint_version": "2",
+         "checkpoint_path": "s3://flink/checkpoints/FLIN-0002/chk-2",
+         "checkpoint_offset": "2097152", "task_schema_version": "v2",
+         "output_table_version": "v2", "current_output_table_version": "v2",
+         "output_table_history": ["v2"], "batch_total": 4, "batch_completed": 2,
+         "created_at": "2026-11-16T10:00:00"},
+        {"id": 3, "job_id": 3, "checkpoint_version": "1",
+         "checkpoint_path": "s3://flink/checkpoints/FLIN-0003/chk-1",
+         "checkpoint_offset": "0", "task_schema_version": "v1",
+         "output_table_version": "v1", "current_output_table_version": "v1",
+         "output_table_history": ["v1"], "batch_total": 2, "batch_completed": 2,
+         "created_at": "2026-11-16T08:00:00"},
+    ],
 }

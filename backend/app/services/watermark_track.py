@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.store import store
+from app.services.common import filter_page
 
 MODULE = "watermark_track"
 LIST_FIELDS = ["标记编号", "数据主题", "分区编号", "事件时间水位", "处理时间水位", "延迟记录数", "消费偏移", "检查时间"]
@@ -23,16 +24,15 @@ class WatermarkTrackService:
         page: int = 1,
         size: int = 20,
     ) -> tuple[list[dict[str, Any]], int]:
-        rows = store.rows(MODULE)
-        for field, expected in (filters or {}).items():
-            rows = [row for row in rows if expected.casefold() in str(row.get(field, "")).casefold()]
-        if keyword:
-            rows = [row for row in rows if keyword.casefold() in str(row.get("标记编号", "")).casefold()]
-        if status:
-            rows = [row for row in rows if row.get("status") == status]
-        total = len(rows)
-        start = (page - 1) * size
-        return rows[start:start + size], total
+        return filter_page(
+            store.rows(MODULE),
+            code_field="标记编号",
+            filters=filters,
+            keyword=keyword,
+            status=status,
+            page=page,
+            size=size,
+        )
 
     def get_entry(self, entry_id: int) -> dict[str, Any] | None:
         return store.find(MODULE, entry_id)

@@ -72,6 +72,32 @@
       </form>
     </div>
 
+    <section class="migration-panel" data-testid="schema-migration-checks">
+      <header class="migration-head">
+        <div>
+          <h3>迁移计划检查点版本核对</h3>
+          <p class="page-desc">读取流式计算生成的任务状态迁移数据计划，核对检查点字段版本与主题 Schema 版本。</p>
+        </div>
+        <button class="btn" type="button" data-testid="refresh-migration-checks" @click="loadMigrationChecks">刷新核对</button>
+      </header>
+      <p v-if="!migrationChecks.length" class="migration-empty" data-testid="migration-checks-empty">暂无迁移数据计划，可先在流式计算页生成</p>
+      <table v-else class="data-table">
+        <thead>
+          <tr><th>计划编号</th><th>关联主题</th><th>检查点版本</th><th>Schema版本</th><th>核对结果</th><th>计划状态</th></tr>
+        </thead>
+        <tbody>
+          <tr v-for="check in migrationChecks" :key="check.plan_id" :data-testid="`migration-check-${check.plan_id}`" :data-compatible="check.compatible">
+            <td>{{ check.plan_code }}</td>
+            <td>{{ check.topic_code || '—' }}</td>
+            <td>{{ check.checkpoint_version || '—' }}</td>
+            <td>{{ check.schema_version || '—' }}</td>
+            <td>{{ check.compatible ? '一致' : '不一致' }}</td>
+            <td>{{ check.plan_status || '—' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
     <footer class="page-foot">
       <span>共 {{ total }} 条Schema演进记录</span>
       <span v-if="errorMessage" class="error-text">{{ errorMessage }}</span>
@@ -100,6 +126,7 @@ const filterFields = columns.slice(0, 3)
 const showCreate = ref(false)
 const creating = ref(false)
 const createValues = ref<Record<string, string>>({})
+const migrationChecks = ref<any[]>([])
 const stats = computed(() => [
   { label: metricNames[0], value: total.value },
   { label: metricNames[1], value: rows.value.filter((row) => row.status === statuses[1]).length },
@@ -184,5 +211,18 @@ async function reload() {
   }
 }
 
-onMounted(reload)
+async function loadMigrationChecks() {
+  try {
+    const response = await request(`${ENDPOINT}/migration-checks`)
+    if (!response.ok) throw new Error('迁移计划核对读取失败')
+    migrationChecks.value = await response.json()
+  } catch (error) {
+    migrationChecks.value = []
+  }
+}
+
+onMounted(() => {
+  void reload()
+  void loadMigrationChecks()
+})
 </script>
